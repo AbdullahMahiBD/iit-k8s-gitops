@@ -1,25 +1,22 @@
+# Stage 1: Build static production assets
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency definitions
 COPY package*.json ./
 
-# Install dependencies cleanly
 RUN npm ci --legacy-peer-deps || npm install
 
-# Copy source files
 COPY . .
 
-# Prevent CI warnings from terminating build & optimize memory
 ENV CI=false
+ENV DISABLE_ESLINT_PLUGIN=true
 ENV GENERATE_SOURCEMAP=false
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# Build production assets
 RUN npm run build
 
-# Production runtime stage (Nginx)
+# Stage 2: Minimal hardened Nginx runtime
 FROM nginx:alpine
 
 COPY --from=builder /app/build /usr/share/nginx/html
