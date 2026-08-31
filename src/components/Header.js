@@ -17,7 +17,7 @@ const Header = () => {
         <p className="hero-subtitle">ADN Group</p>
         <p className="hero-subtitle-2">TRANSFORMING THE EXPERIENCE</p>
         <p className="hero-date">{today}</p>
-        <p className="hero-subtitle-2">Continuous Integration & Continuous Deployment</p>
+        <p className="hero-subtitle-2">Demo Application</p>
       </div>
       <footer className="hero-footer">
         &copy; {new Date().getFullYear()} IIT-JU Project. All rights reserved.
