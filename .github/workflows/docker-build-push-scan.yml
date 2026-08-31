@@ -11,7 +11,7 @@ env:
 
 jobs:
   # =========================================================================
-  # 1. SonarQube SAST Code Analysis
+  # 1. SonarQube SAST Code Analysis & Quality Gate Check
   # =========================================================================
   sonarqube-analysis:
     name: SonarQube Code Analysis
@@ -24,7 +24,6 @@ jobs:
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v2
-        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -36,7 +35,6 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: sonarqube-analysis
-    if: always()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -156,13 +154,7 @@ jobs:
       - name: Update Image Tag in deployment.yml
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          echo "Bumping image tag to: ${SHORT_SHA}"
-          
-          # Regex replace image tag cleanly
           sed -i -E "s|(image:\s*${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}):.*|\1:${SHORT_SHA}|g" gitops-repo/frontend/deployment.yml
-          
-          echo "--- Resulting Manifest Line ---"
-          grep "image:" gitops-repo/frontend/deployment.yml
 
       - name: Commit and Push to GitOps Repo
         run: |
@@ -176,3 +168,43 @@ jobs:
             git commit -m "chore: auto-deploy commit ${GITHUB_SHA::7}"
             git push origin main
           fi
+
+  # =========================================================================
+  # 5. Pipeline Failure Notifier (Dispatches Alert Email on Any Failure)
+  # =========================================================================
+  notify-failure:
+    name: Send Outlook Failure Alert
+    runs-on: ubuntu-latest
+    needs: [sonarqube-analysis, build-and-push, trivy-scan, update-gitops]
+    if: failure()
+    steps:
+      - name: Dispatch Outlook Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER || 'smtp.office365.com' }}
+          server_port: ${{ secrets.MAIL_PORT || 587 }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 [CRITICAL ALERT] DevSecOps Pipeline Failure - IIT-App"
+          to: ${{ secrets.MAIL_RECIPIENT }}
+          from: "IIT DevSecOps Alert <${{ secrets.MAIL_USERNAME }}>"
+          secure: false
+          body: |
+            =======================================================
+            🚨 CI/CD PIPELINE BUILD STAGE FAILED
+            =======================================================
+            
+            Repository:    ${{ github.repository }}
+            Branch:        ${{ github.ref_name }}
+            Commit SHA:    ${{ github.sha }}
+            Triggered By:  ${{ github.actor }}
+            Commit Msg:    ${{ github.event.head_commit.message }}
+            
+            Action Required:
+            A critical stage in your automated pipeline (SonarQube analysis, Docker build, Trivy scan, or GitOps commit) encountered a failure.
+            
+            View Workflow Logs:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            -------------------------------------------------------
+            IIT-JU DevSecOps Automated Monitoring System
