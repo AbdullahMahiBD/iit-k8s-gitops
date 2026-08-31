@@ -156,7 +156,13 @@ jobs:
       - name: Update Image Tag in deployment.yml
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          sed -i "s|image: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:.*|image: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${SHORT_SHA}|g" gitops-repo/frontend/deployment.yml
+          echo "Bumping image tag to: ${SHORT_SHA}"
+          
+          # Regex replace image tag cleanly
+          sed -i -E "s|(image:\s*${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}):.*|\1:${SHORT_SHA}|g" gitops-repo/frontend/deployment.yml
+          
+          echo "--- Resulting Manifest Line ---"
+          grep "image:" gitops-repo/frontend/deployment.yml
 
       - name: Commit and Push to GitOps Repo
         run: |
@@ -164,5 +170,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add frontend/deployment.yml
-          git commit -m "chore: auto-deploy commit ${GITHUB_SHA::7}" || exit 0
-          git push
+          if git diff --staged --quiet; then
+            echo "No changes in deployment.yml"
+          else
+            git commit -m "chore: auto-deploy commit ${GITHUB_SHA::7}"
+            git push origin main
+          fi
