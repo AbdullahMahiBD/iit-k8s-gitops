@@ -1,4 +1,4 @@
-# Stage 1: Build static production assets
+# Stage 1: Build static React files
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -16,7 +16,7 @@ ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 RUN npm run build
 
-# Stage 2: Minimal hardened Nginx runtime
+# Stage 2: Serve with lightweight Nginx
 FROM nginx:alpine
 
 COPY --from=builder /app/build /usr/share/nginx/html
