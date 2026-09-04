@@ -13,9 +13,9 @@ const Header = () => {
     <div className="hero">
       <div className="hero-content">
         <img src={DevOpsLogo} alt="DevOps" className="hero-image" />
-        <h1 className="hero-title">ADN Technologies Limited</h1>
-        <p className="hero-subtitle">ADN Group</p>
-        <p className="hero-subtitle-2">TRANSFORMING THE EXPERIENCE</p>
+        <h1 className="hero-title">Institute of Information Technology</h1>
+        <p className="hero-subtitle">Jahangirnagar University</p>
+        <p className="hero-subtitle-2">Savar, Dhaka-1342, Bangladesh.</p>
         <p className="hero-date">{today}</p>
         <p className="hero-subtitle-2"> </p>
       </div>
