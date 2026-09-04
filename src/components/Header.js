@@ -17,7 +17,7 @@ const Header = () => {
         <p className="hero-subtitle">Jahangirnagar University</p>
         <p className="hero-subtitle-2">Savar, Dhaka-1342, Bangladesh.</p>
         <p className="hero-date">{today}</p>
-        <p className="hero-subtitle-2"> </p>
+        <p className="hero-subtitle-2">.</p>
       </div>
       <footer className="hero-footer">
         &copy; {new Date().getFullYear()} IIT-JU Project. All rights reserved.
