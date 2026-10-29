@@ -28,6 +28,14 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+      # ENFORCES QUALITY GATE: Fails job if SonarQube detects vulnerabilities/bugs
+      - name: Enforce SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
   # =========================================================================
   # 2. Build & Push Docker Image
   # =========================================================================
@@ -110,9 +118,9 @@ jobs:
         if: always()
         run: |
           echo "### 🛡️ Trivy Container Security Scan Summary" >> $GITHUB_STEP_SUMMARY
-          echo "**Scanned Image:** \`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.commit.outputs.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          cat trivy-results.txt >> $GITHUB_STEP_SUMMARY
+          echo "**Scanned Image:** \`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.commit.outputs.sha }}\`" >> \$GITHUB_STEP_SUMMARY
+          echo '```text' >> \$GITHUB_STEP_SUMMARY
+          cat trivy-results.txt >> \$GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy Live Trivy Dashboard to VM
@@ -135,6 +143,15 @@ jobs:
             index.html
             trivy-results.txt
           retention-days: 14
+
+      # FAILS JOB IF HIGH OR CRITICAL VULNERABILITIES ARE DETECTED
+      - name: Evaluate Vulnerability Severity Gate
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.commit.outputs.sha }}
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
 
   # =========================================================================
   # 4. Instant GitOps Update (ArgoCD Auto-Sync)
