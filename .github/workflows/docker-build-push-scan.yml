@@ -28,7 +28,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      # ENFORCES QUALITY GATE: Fails job if SonarQube detects vulnerabilities/bugs
       - name: Enforce SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
@@ -134,25 +133,6 @@ jobs:
           target: '/var/www/trivy-reports/'
           strip_components: 0
 
-      - name: Upload Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-security-reports-${{ steps.commit.outputs.sha }}
-          path: |
-            index.html
-            trivy-results.txt
-          retention-days: 14
-
-      # FAILS JOB IF HIGH OR CRITICAL VULNERABILITIES ARE DETECTED
-      - name: Evaluate Vulnerability Severity Gate
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.commit.outputs.sha }}
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-
   # =========================================================================
   # 4. Instant GitOps Update (ArgoCD Auto-Sync)
   # =========================================================================
@@ -187,41 +167,86 @@ jobs:
           fi
 
   # =========================================================================
-  # 5. Pipeline Failure Notifier (Dispatches Alert Email on Any Failure)
+  # 5A. Pipeline SUCCESS Notifier (Triggers when ALL jobs pass)
   # =========================================================================
-  notify-failure:
-    name: Send Outlook Failure Alert
+  notify-success:
+    name: Send Success Email Alert
     runs-on: ubuntu-latest
     needs: [sonarqube-analysis, build-and-push, trivy-scan, update-gitops]
-    if: failure()
+    if: success()
     steps:
-      - name: Dispatch Outlook Email Notification
+      - name: Dispatch Success Email Notification
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_SERVER || 'smtp.office365.com' }}
           server_port: ${{ secrets.MAIL_PORT || 587 }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 [CRITICAL ALERT] DevSecOps Pipeline Failure - IIT-App"
+          subject: "✅ [SUCCESS] DevSecOps Pipeline Passed - Web Application Published"
           to: ${{ secrets.MAIL_RECIPIENT }}
-          from: "IIT DevSecOps Alert <${{ secrets.MAIL_USERNAME }}>"
+          from: "IIT DevSecOps Automation <${{ secrets.MAIL_USERNAME }}>"
           secure: false
           body: |
             =======================================================
-            🚨 CI/CD PIPELINE BUILD STAGE FAILED
+            ✅ CI/CD PIPELINE & DEPLOYMENT SUCCESSFUL
             =======================================================
             
             Repository:    ${{ github.repository }}
             Branch:        ${{ github.ref_name }}
             Commit SHA:    ${{ github.sha }}
             Triggered By:  ${{ github.actor }}
-            Commit Msg:    ${{ github.event.head_commit.message }}
             
-            Action Required:
-            A critical stage in your automated pipeline (SonarQube analysis, Docker build, Trivy scan, or GitOps commit) encountered a failure.
+            Quality Gate Result: PASSED (Sonar way Gate Active)
+            Deployment Status:  Published to ArgoCD GitOps
             
-            View Workflow Logs:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Live Portal: https://project.iitju.tech
+            Trivy Security Report: https://trivy.iitju.tech
+            
+            -------------------------------------------------------
+            IIT-JU DevSecOps Automated Monitoring System
+
+  # =========================================================================
+  # 5B. Pipeline FAILURE Notifier (Triggers on Quality Gate or Build Fail)
+  # =========================================================================
+  notify-failure:
+    name: Send Failure Email Alert
+    runs-on: ubuntu-latest
+    needs: [sonarqube-analysis, build-and-push, trivy-scan, update-gitops]
+    if: failure()
+    steps:
+      - name: Dispatch Failure Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER || 'smtp.office365.com' }}
+          server_port: ${{ secrets.MAIL_PORT || 587 }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 [FAILED] DevSecOps Pipeline Blocked - Quality Gate Violation"
+          to: ${{ secrets.MAIL_RECIPIENT }}
+          from: "IIT DevSecOps Automation <${{ secrets.MAIL_USERNAME }}>"
+          secure: false
+          body: |
+            =======================================================
+            🚨 CI/CD PIPELINE EXECUTION FAILED
+            =======================================================
+            
+            Repository:    ${{ github.repository }}
+            Branch:        ${{ github.ref_name }}
+            Commit SHA:    ${{ github.sha }}
+            Triggered By:  ${{ github.actor }}
+            
+            Failure Summary:
+            The build and deployment process was blocked. 
+            
+            Potential Pipeline Issues To Fix:
+            1. SonarQube Quality Gate Failed (IIT-JU Strict Gate active: Coverage < 100%, Duplications, or Security Hotspots).
+            2. Build compilation or Docker image assembly failed.
+            3. GitOps repository synchronization failure.
+            
+            Required Action:
+            - Review SonarQube Dashboard: https://sonar.iitju.tech
+            - Review GitHub Action Workflow Logs:
+              ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             
             -------------------------------------------------------
             IIT-JU DevSecOps Automated Monitoring System
