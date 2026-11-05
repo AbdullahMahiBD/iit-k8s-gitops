@@ -28,6 +28,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+      # Strict Enforcement: Fails the step and halts workflow if Quality Gate is not PASSED
       - name: Enforce SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
@@ -184,7 +185,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "✅ [SUCCESS] DevSecOps Pipeline Passed - Web Application Published"
           to: ${{ secrets.MAIL_RECIPIENT }}
-          from: "IIT DevSecOps Automation <${{ secrets.MAIL_USERNAME }}>"
+          from: "IIT-JU Project System Alert <${{ secrets.MAIL_USERNAME }}>"
           secure: false
           body: |
             =======================================================
@@ -203,7 +204,7 @@ jobs:
             Trivy Security Report: https://trivy.iitju.tech
             
             -------------------------------------------------------
-            IIT-JU DevSecOps Automated Monitoring System
+            IIT-JU Project Monitoring System
 
   # =========================================================================
   # 5B. Pipeline FAILURE Notifier (Triggers on Quality Gate or Build Fail)
@@ -223,7 +224,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "🚨 [FAILED] DevSecOps Pipeline Blocked - Quality Gate Violation"
           to: ${{ secrets.MAIL_RECIPIENT }}
-          from: "IIT DevSecOps Automation <${{ secrets.MAIL_USERNAME }}>"
+          from: "IIT-JU Project System Alert <${{ secrets.MAIL_USERNAME }}>"
           secure: false
           body: |
             =======================================================
@@ -249,4 +250,4 @@ jobs:
               ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             
             -------------------------------------------------------
-            IIT-JU DevSecOps Automated Monitoring System
+            IIT-JU Project Monitoring System
